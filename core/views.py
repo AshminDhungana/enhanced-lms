@@ -7,12 +7,13 @@ from django.urls import reverse
 from .models import Course, Enrollment, Assessment, Submission, Sponsorship, UserProfile, CoursePayment, Notification
 from django.db.models import Count, Q, Sum, Avg, Max
 from django.utils import timezone
-from .forms import CourseForm, EnrollmentForm, AssessmentForm, SubmissionGradingForm # Import new forms
+from .forms import CourseForm, EnrollmentForm, AssessmentForm, SubmissionGradingForm
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .utils import send_notification_email
+from django.http import JsonResponse
 
 
-# --- Helper functions for checking user roles (unchanged) ---
+# --- Helper functions for checking user roles ---
 def is_admin(user):
     return user.is_authenticated and user.groups.filter(name='admin').exists()
 
@@ -26,11 +27,11 @@ def is_sponsor(user):
     return user.is_authenticated and user.groups.filter(name='sponsor').exists()
 
 
-# --- Home Page View (unchanged) ---
+# --- Home Page View ---
 def home(request):
     return render(request, 'core/home.html')
 
-# --- Dashboard Redirection View (unchanged) ---
+# --- Dashboard Redirection View ---
 @login_required
 def dashboard_redirect(request):
     if is_admin(request.user) or request.user.is_superuser:
@@ -45,7 +46,7 @@ def dashboard_redirect(request):
         return redirect('core:home')
 
 
-# --- Role-based Dashboards (unchanged as context processor handles notifications) ---
+# --- Role-based Dashboards ---
 
 @login_required
 @user_passes_test(is_student, login_url='/login/')
@@ -183,7 +184,7 @@ def sponsor_dashboard(request):
     return render(request, 'core/dashboard_sponsor.html', context)
 
 
-# --- Admin Dashboard Analytics (unchanged) ---
+# --- Admin Dashboard Analytics ---
 @login_required
 @user_passes_test(lambda u: is_admin(u) or u.is_superuser, login_url='/login/')
 def admin_dashboard(request):
@@ -206,7 +207,7 @@ def admin_dashboard(request):
     total_funds_received = Sponsorship.objects.aggregate(sum_amount=Sum('amount_funded'))['sum_amount']
     if total_funds_received is None:
         total_funds_received = 0
-
+    
     context = {
         'user': request.user,
         'total_users': total_users,
@@ -225,7 +226,7 @@ def admin_dashboard(request):
     return render(request, 'core/dashboard_admin.html', context)
 
 
-# --- Course CRUD Views (unchanged) ---
+# --- Course CRUD Views ---
 
 def course_list(request):
     courses = Course.objects.filter(is_active=True)
@@ -293,6 +294,7 @@ def course_create(request):
 @user_passes_test(is_instructor, login_url='/login/')
 def course_update(request, pk):
     course = get_object_or_404(Course, pk=pk)
+    # Authorization check
     if not course.instructors.filter(pk=request.user.pk).exists() and not request.user.is_superuser:
         return redirect('core:course_list')
 
@@ -300,8 +302,191 @@ def course_update(request, pk):
         form = CourseForm(request.POST, instance=course)
         if form.is_valid():
             form.save()
-            return redirect('core:course_list')
-else:
-    form = CourseForm(instance=course)
-context = {'form': form, 'form_title': 'Update Course', 'course': course}
-return render(request, 'core/course_form.html', context)
+            # Redirect to course detail after update for better UX
+            return redirect('core:course_detail', pk=course.pk) 
+    else:
+        form = CourseForm(instance=course)
+    
+    # These lines should be at the same indentation level as the 'if request.method == 'POST':'
+    # and the 'else:'. This was likely the source of the SyntaxError.
+    context = {'form': form, 'form_title': 'Update Course', 'course': course}
+    return render(request, 'core/course_form.html', context)
+
+@login_required
+@user_passes_test(is_instructor, login_url='/login/')
+def course_delete(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+    if not course.instructors.filter(pk=request.user.pk).exists() and not request.user.is_superuser:
+        return redirect('core:course_list')
+
+    if request.method == 'POST':
+        course.delete()
+        return redirect('core:course_list')
+    context = {'course': course}
+    return render(request, 'core/course_confirm_delete.html', context)
+
+def course_detail(request, pk):
+    course = get_object_or_404(Course.objects.prefetch_related('modules__lessons'), pk=pk)
+    is_enrolled = False
+    if request.user.is_authenticated:
+        if request.user.is_superuser or is_admin(request.user) or is_instructor(request.user):
+            is_enrolled = True
+        else:
+            is_enrolled = Enrollment.objects.filter(student=request.user, course=course).exists()
+
+    context = {
+        'course': course,
+        'is_enrolled': is_enrolled,
+        'user': request.user,
+    }
+    return render(request, 'core/course_detail.html', context)
+
+@login_required
+@user_passes_test(is_student, login_url='/login/')
+def enroll_course(request, pk):
+    course = get_object_or_404(Course, pk=pk)
+    if Enrollment.objects.filter(student=request.user, course=course).exists():
+        return redirect('core:course_detail', pk=course.pk)
+
+    if request.method == 'POST':
+        enrollment = Enrollment.objects.create(student=request.user, course=course)
+        return redirect('core:student_dashboard')
+    return redirect('core:course_detail', pk=course.pk)
+
+
+# --- New Views for Assessment and Submission Grading with Notifications ---
+
+@login_required
+@user_passes_test(is_instructor, login_url='/login/')
+def assessment_create(request, course_pk):
+    course = get_object_or_404(Course, pk=course_pk)
+    if not course.instructors.filter(pk=request.user.pk).exists() and not request.user.is_superuser:
+        return redirect('core:course_detail', pk=course.pk)
+
+    if request.method == 'POST':
+        form = AssessmentForm(request.POST)
+        if form.is_valid():
+            assessment = form.save(commit=False)
+            assessment.course = course
+            assessment.save()
+
+            enrolled_students = User.objects.filter(enrollments__course=course)
+            # Use build_absolute_uri to ensure the link is fully qualified for emails
+            assignment_link = request.build_absolute_uri(reverse('core:course_detail', args=[course.pk])) 
+
+            for student in enrolled_students:
+                context = {
+                    'student_name': student.first_name or student.username,
+                    'course_title': course.title,
+                    'assignment_title': assessment.title,
+                    'due_date': assessment.due_date,
+                    'assignment_link': assignment_link,
+                }
+                send_notification_email(
+                    recipient_user=student,
+                    subject=f"New Assignment: {assessment.title} for {course.title}",
+                    template_name='emails/new_assignment.html',
+                    context=context,
+                    notification_type='new_assignment',
+                    sender_user=request.user,
+                    link=assignment_link
+                )
+
+            return redirect('core:course_detail', pk=course.pk)
+    else:
+        form = AssessmentForm(initial={'course': course})
+    
+    context = {'form': form, 'form_title': f'Create New Assignment for {course.title}', 'course': course}
+    return render(request, 'core/assessment_form.html', context)
+
+
+@login_required
+@user_passes_test(is_instructor, login_url='/login/')
+def submission_grade(request, pk):
+    submission = get_object_or_404(Submission, pk=pk)
+    assessment = submission.assessment
+    course = assessment.course
+
+    if not course.instructors.filter(pk=request.user.pk).exists() and not request.user.is_superuser:
+        return redirect('core:instructor_dashboard')
+
+    if request.method == 'POST':
+        form = SubmissionGradingForm(request.POST, instance=submission, assessment_max_score=assessment.max_score)
+        if form.is_valid():
+            graded_submission = form.save()
+
+            submission_link = request.build_absolute_uri(reverse('core:submission_detail', args=[graded_submission.pk]))
+
+            context = {
+                'student_name': graded_submission.student.first_name or graded_submission.student.username,
+                'assignment_title': assessment.title,
+                'course_title': course.title,
+                'score': graded_submission.score,
+                'max_score': assessment.max_score,
+                'feedback': graded_submission.feedback,
+                'submission_link': submission_link,
+            }
+            send_notification_email(
+                recipient_user=graded_submission.student,
+                subject=f"Assessment Graded: {assessment.title} - {graded_submission.score}/{assessment.max_score}",
+                template_name='emails/assessment_graded.html',
+                context=context,
+                notification_type='assessment_result',
+                sender_user=request.user,
+                link=submission_link
+            )
+
+            return redirect('core:instructor_dashboard')
+    else:
+        form = SubmissionGradingForm(instance=submission, assessment_max_score=assessment.max_score)
+    
+    context = {
+        'form': form,
+        'form_title': f'Grade Submission for {submission.student.username}',
+        'submission': submission,
+        'assessment': assessment,
+    }
+    return render(request, 'core/submission_grade_form.html', context)
+
+
+@login_required
+@user_passes_test(lambda u: is_student(u) or is_instructor(u) or is_admin(u) or u.is_superuser, login_url='/login/')
+def submission_detail(request, pk):
+    submission = get_object_or_404(Submission, pk=pk)
+    
+    if is_student(request.user) and submission.student != request.user:
+        return redirect('core:student_dashboard')
+    
+    if is_instructor(request.user) and not submission.assessment.course.instructors.filter(pk=request.user.pk).exists() and not is_admin(request.user) and not request.user.is_superuser:
+        return redirect('core:instructor_dashboard')
+
+    context = {
+        'submission': submission,
+        'assessment': submission.assessment,
+        'course': submission.assessment.course,
+    }
+    return render(request, 'core/submission_detail.html', context)
+
+
+# --- Notification Management Views ---
+
+@login_required
+def all_notifications(request):
+    notifications = Notification.objects.filter(recipient=request.user).order_by('-created_at')
+    # Mark all notifications on this page as read
+    notifications.filter(is_read=False).update(is_read=True)
+
+    context = {
+        'notifications': notifications,
+    }
+    return render(request, 'core/all_notifications.html', context)
+
+
+@login_required
+def mark_notification_as_read(request, pk):
+    if request.method == 'POST':
+        notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        notification.is_read = True
+        notification.save()
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=400)
