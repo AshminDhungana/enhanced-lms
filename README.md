@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # **Enhanced Learning Management System (LMS)**
 
 ## **Project Overview**
