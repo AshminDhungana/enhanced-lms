@@ -6,6 +6,7 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls')),
-    # Ensure Django's built-in authentication URLs are included under the 'accounts' namespace
-    path('accounts/', include('django.contrib.auth.urls')),
+    # THIS LINE IS CRUCIAL: Ensure 'namespace='accounts'' is explicitly set here,
+    # and pass django.contrib.auth.urls as a 2-tuple.
+    path('accounts/', include(('django.contrib.auth.urls', 'accounts'), namespace='accounts')),
 ]

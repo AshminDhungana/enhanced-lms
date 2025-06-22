@@ -69,9 +69,9 @@
 
                     <span class="text-white text-lg">Hello, <span class="font-semibold">{{ user.username }}</span>!</span>
                     <a href="{% url 'core:dashboard_redirect' %}" class="bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors hidden sm:inline-block">My Dashboard</a>
-                    <a href="{% url 'core:logout' %}" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Logout</a>
+                    <a href="{% url 'accounts:logout' %}" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Logout</a> {# Changed to accounts:logout #}
                 {% else %}
-                    <a href="{% url 'core:login' %}" class="bg-white text-indigo-700 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-100 transition-colors">Login</a>
+                    <a href="{% url 'accounts:login' %}" class="bg-white text-indigo-700 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-100 transition-colors">Login</a> {# Changed to accounts:login #}
                 {% endif %}
             </div>
         </div>
