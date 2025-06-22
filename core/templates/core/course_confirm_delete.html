@@ -1,0 +1,25 @@
+<!-- core/templates/core/course_confirm_delete.html -->
+{% extends 'base.html' %}
+
+{% block title %}Confirm Delete{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md text-center">
+        <h2 class="text-3xl font-bold text-red-700 mb-6">Confirm Deletion</h2>
+        <p class="text-lg text-gray-700 mb-8">
+            Are you sure you want to delete the course "<span class="font-bold">{{ course.title }}</span>"?
+            This action cannot be undone.
+        </p>
+        <form method="post" class="space-y-4">
+            {% csrf_token %}
+            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Yes, Delete
+            </button>
+            <a href="{% url 'core:course_detail' pk=course.pk %}" class="block text-center mt-4 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg transition duration-300">
+                Cancel
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

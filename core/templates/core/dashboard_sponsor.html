@@ -1,0 +1,167 @@
+<!-- core/templates/core/dashboard_sponsor.html -->
+{% extends 'base.html' %}
+
+{% block title %}Sponsor Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-8 mt-8 bg-white rounded-lg shadow-xl">
+    <h1 class="text-3xl font-bold text-indigo-700 mb-6 flex items-center justify-between">
+        Sponsor Dashboard
+    </h1>
+    <p class="text-gray-700 mb-4">Track the impact of your sponsorships and student progress.</p>
+
+    <!-- Sponsor Filter Form (unchanged from previous step) -->
+    <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow-md border border-gray-200">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">Filter Sponsored Students</h2>
+        <form method="get" action="{% url 'core:sponsor_dashboard' %}" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div class="flex flex-col">
+                <label for="status" class="text-sm font-medium text-gray-700 mb-1">Student Status:</label>
+                <select id="status" name="status"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="all" {% if student_status_filter == 'all' %}selected{% endif %}>All</option>
+                    <option value="completed" {% if student_status_filter == 'completed' %}selected{% endif %}>Has Completed Courses</option>
+                    <option value="in_progress" {% if student_status_filter == 'in_progress' %}selected{% endif %}>Has In-Progress Courses</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col">
+                <label for="progress" class="text-sm font-medium text-gray-700 mb-1">Student Progress:</label>
+                <select id="progress" name="progress"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="all" {% if student_progress_filter == 'all' %}selected{% endif %}>All</option>
+                    <option value="high_progress" {% if student_progress_filter == 'high_progress' %}selected{% endif %}>High Progress (e.g., > 75%)</option>
+                    <option value="low_progress" {% if student_progress_filter == 'low_progress' %}selected{% endif %}>Low Progress (e.g., < 25%)</option>
+                </select>
+            </div>
+
+            <div class="flex flex-col">
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    Apply Filters
+                </button>
+            </div>
+        </form>
+        {% if student_status_filter != 'all' or student_progress_filter != 'all' %}
+            <div class="mt-4 text-sm text-gray-600">
+                <a href="{% url 'core:sponsor_dashboard' %}" class="text-indigo-600 hover:underline">Clear Filters</a>
+            </div>
+        {% endif %}
+    </div>
+
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        <!-- Sponsorship Overview Card -->
+        <div class="bg-sky-50 p-6 rounded-lg shadow-md border border-sky-200">
+            <h2 class="text-xl font-semibold text-sky-800 mb-3">Sponsorship Overview</h2>
+            <ul class="space-y-2 text-gray-700">
+                <li><span class="font-medium">Total Sponsored Students:</span> <span class="font-bold text-sky-700">{{ total_students_sponsored }}</span></li>
+                <li><span class="font-medium">Total Active Sponsorships:</span> <span class="font-bold">{{ total_active_sponsorships }}</span></li>
+                <li><span class="font-medium">Total Funds Provided:</span> <span class="font-bold">${{ total_funds_provided|floatformat:2 }}</span></li>
+                <li><span class="font-medium">Total Funds Utilized:</span> <span class="font-bold">${{ total_funds_utilized|floatformat:2 }}</span></li>
+            </ul>
+        </div>
+
+        <!-- Sponsored Student Progress Overview -->
+        <div class="bg-lime-50 p-6 rounded-lg shadow-md border border-lime-200">
+            <h2 class="text-xl font-semibold text-lime-800 mb-3">Student Progress Impact</h2>
+            <ul class="space-y-2 text-gray-700">
+                <li><span class="font-medium">Students with Completed Courses:</span> <span class="font-bold text-lime-700">{{ total_completed_by_sponsored }}</span></li>
+                <li><span class="font-medium">Students with In-Progress Courses:</span> <span class="font-bold">{{ total_in_progress_by_sponsored }}</span></li>
+                <li><span class="font-medium">Total Sponsored Enrollments:</span> <span class="font-bold">{{ total_sponsored_enrollments }}</span></li>
+                <li><span class="font-medium">Avg. Progress of Sponsored Students:</span> <span class="font-bold">{{ avg_sponsored_student_progress|floatformat:"1" }}%</span></li>
+            </ul>
+        </div>
+
+        <!-- Funding History Card (placeholder for detailed history, but now with dynamic total) -->
+        <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200">
+            <h2 class="text-xl font-semibold text-orange-800 mb-3">Funding History</h2>
+            <p class="text-gray-600 mb-2">You have provided a total of $<span class="font-bold">{{ total_funds_provided|floatformat:2 }}</span> in funds.</p>
+            <ul class="list-disc list-inside text-gray-600 mt-2">
+                <li>(Detailed transaction history coming soon)</li>
+                <li>Next funding opportunity: August 2025 (placeholder)</li>
+            </ul>
+            <a href="#" class="text-orange-600 hover:underline mt-4 block">View Full Funding History &rarr;</a>
+        </div>
+    </div>
+
+
+    <!-- Student Progress Card (Now displays paginated filtered students) -->
+    <div class="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">Sponsored Student Details (Filtered)</h2>
+        {% if filtered_sponsored_student_data.object_list %}
+            <p class="text-gray-600 mb-4">Displaying <span class="font-bold">{{ filtered_sponsored_student_data|length }}</span> student{{ filtered_sponsored_student_data|length|pluralize }} matching your criteria:</p>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-sm">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">Student</th>
+                            <th class="py-3 px-6 text-left">Sponsorship Amount</th>
+                            <th class="py-3 px-6 text-left">Active</th>
+                            <th class="py-3 px-6 text-left">Overall Progress</th>
+                            <th class="py-3 px-6 text-left">Enrollments</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-600 text-sm font-light">
+                        {% for data in filtered_sponsored_student_data %}
+                            <tr class="border-b border-gray-200 hover:bg-gray-100">
+                                <td class="py-3 px-6 text-left whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <span class="font-medium">{{ data.student.username }}</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-6 text-left">${{ data.sponsorship.amount_funded|floatformat:2 }}</td>
+                                <td class="py-3 px-6 text-left">{{ data.sponsorship.is_active|yesno:"Yes,No" }}</td>
+                                <td class="py-3 px-6 text-left">
+                                    {% if data.overall_progress_value is not None %}
+                                        {{ data.overall_progress_value|floatformat:"0" }}%
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-6 text-left">
+                                    {% if data.enrollments %}
+                                        <ul class="list-disc list-inside">
+                                            {% for enrollment in data.enrollments %}
+                                                <li>{{ enrollment.course.title }} ({{ enrollment.progress|floatformat:"0" }}%)</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        No enrollments
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Controls for Sponsored Students (unchanged) -->
+            <div class="pagination flex justify-center items-center space-x-2 mt-8">
+                {% if filtered_sponsored_student_data.has_previous %}
+                    <a href="?page={{ filtered_sponsored_student_data.previous_page_number }}{% if student_status_filter %}&status={{ student_status_filter }}{% endif %}{% if student_progress_filter %}&progress={{ student_progress_filter }}{% endif %}"
+                       class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">
+                       &laquo; Previous
+                    </a>
+                {% else %}
+                    <span class="bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg cursor-not-allowed opacity-50">&laquo; Previous</span>
+                {% endif %}
+
+                <span class="current-page text-lg font-semibold text-gray-800 px-3 py-1">
+                    Page {{ filtered_sponsored_student_data.number }} of {{ filtered_sponsored_student_data.paginator.num_pages }}.
+                </span>
+
+                {% if filtered_sponsored_student_data.has_next %}
+                    <a href="?page={{ filtered_sponsored_student_data.next_page_number }}{% if student_status_filter %}&status={{ student_status_filter }}{% endif %}{% if student_progress_filter %}&progress={{ student_progress_filter }}{% endif %}"
+                       class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">
+                       Next &raquo;
+                    </a>
+                {% else %}
+                    <span class="bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-lg cursor-not-allowed opacity-50">Next &raquo;</span>
+                {% endif %}
+            </div>
+
+        {% else %}
+            <p class="text-gray-600">No sponsored students matching your filter criteria.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

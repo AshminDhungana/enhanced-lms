@@ -1,0 +1,74 @@
+Enhanced Learning Management System (LMS) User Guide
+Welcome to the Enhanced LMS! This guide provides a basic overview of how to navigate and utilize the platform based on your user role.
+
+1. Accessing the LMS
+URL: Your LMS is typically accessible at https://your-codespace-url-8000.app.github.dev/ (replace with your actual Codespace URL).
+
+Login: Click the "Login" button in the top right or navigate to /login/. Use the credentials provided by your administrator.
+
+Logout: Click the "Logout" button in the top right.
+
+2. Understanding Your Dashboard
+After logging in, you will be redirected to a personalized dashboard based on your role:
+
+Admin Dashboard (/admin-dashboard/): Provides an overview of the entire platform's health and statistics. You'll see total users, courses, enrollments, and funds. Quick links to the Django Admin panel are provided for detailed management.
+
+Student Dashboard (/student-dashboard/): Displays your enrolled courses, current progress, and upcoming assignments.
+
+Instructor Dashboard (/instructor-dashboard/): Shows courses you teach, pending submissions that need grading, and basic student analytics for your courses.
+
+Sponsor Dashboard (/sponsor-dashboard/): Offers insights into your sponsored students' progress, total funds provided, and allows you to filter student lists.
+
+3. Core Features by Role
+For All Authenticated Users:
+Notifications (Bell Icon in Navbar):
+
+The bell icon shows the number of unread notifications.
+
+Clicking it reveals a dropdown of recent notifications.
+
+Clicking a notification marks it as read and, if a link is provided, takes you to related content.
+
+Click "View All" in the dropdown or navigate to /notifications/ to see your full notification history.
+
+Courses (/courses/):
+
+Browse all active courses available on the platform.
+
+Use the search bar to find courses by title, description, or instructor name.
+
+Filter courses by difficulty level.
+
+Pagination is available for large lists of courses.
+
+For Students:
+Enroll in Courses: From the /courses/ list or a course_detail page, click "Enroll" on courses you wish to join.
+
+Track Progress: Your student dashboard shows your progress percentage in enrolled courses.
+
+View Assignments: See upcoming assignments on your dashboard. (Future: Dedicated assignment pages).
+
+For Instructors:
+Manage Courses: From your dashboard or the /courses/ page, you can:
+
+Create New Courses: Add new learning content to the LMS.
+
+Edit Courses: Update existing course details, modules, or lessons.
+
+Delete Courses: Remove courses from the platform.
+
+Grade Submissions: Your dashboard will list pending submissions. Click to grade them, provide scores and feedback. This triggers notifications to students.
+
+Create Assessments: From a course_detail page, instructors can add new assessments (quizzes, assignments, etc.). This triggers notifications to enrolled students.
+
+For Sponsors:
+Track Sponsorships: View a list of students you are sponsoring, the amount funded, and whether the sponsorship is active.
+
+Monitor Student Progress: Filter sponsored students by their enrollment status (completed, in-progress) and general progress levels (high, low).
+
+View Financial Impact: See the total funds you've provided and how much has been utilized (if payments are integrated).
+
+4. Getting Help
+If you encounter issues or have questions, please contact your LMS administrator.
+
+For technical problems, please provide details of the page you were on and any error messages.

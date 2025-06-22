@@ -1,0 +1,43 @@
+<!-- core/templates/core/all_notifications.html -->
+{% extends 'base.html' %}
+
+{% block title %}All Notifications{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-8 mt-8 bg-white rounded-lg shadow-xl">
+    <h1 class="text-3xl font-bold text-indigo-700 mb-6">Your Notifications</h1>
+
+    {% if notifications %}
+        <div class="space-y-4">
+            {% for notification in notifications %}
+                <div class="p-4 rounded-lg shadow-sm border
+                    {% if not notification.is_read %}bg-blue-50 border-blue-200{% else %}bg-gray-50 border-gray-200{% endif %}">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            {% if notification.link %}
+                                <a href="{{ notification.link }}" class="hover:underline text-indigo-600">
+                            {% endif %}
+                                {{ notification.message }}
+                            {% if notification.link %}
+                                </a>
+                            {% endif %}
+                        </h3>
+                        <span class="text-xs text-gray-500">{{ notification.created_at|date:"M d, Y P" }}</span>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">Type: {{ notification.get_notification_type_display }}</p>
+                    {% if notification.sender %}
+                        <p class="text-xs text-gray-500">From: {{ notification.sender.username }}</p>
+                    {% endif %}
+                    {% if not notification.is_read %}
+                        <button class="mt-2 text-sm text-indigo-600 hover:underline" onclick="markNotificationAsRead('{{ notification.pk }}'); this.closest('div').classList.remove('bg-blue-50', 'border-blue-200'); this.closest('div').classList.add('bg-gray-50', 'border-gray-200'); this.remove();">
+                            Mark as Read
+                        </button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-600 text-lg">You don't have any notifications yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

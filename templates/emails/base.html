@@ -1,0 +1,161 @@
+<!-- templates/base.html (Top-level templates directory) -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Enhanced LMS{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for notification icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            color: #333;
+        }
+        .container {
+            max-width: 1200px; /* Max width for content area */
+        }
+        .notification-dropdown {
+            display: none; /* Hidden by default */
+        }
+        .notification-dropdown.active {
+            display: block;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="bg-indigo-700 p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <a href="{% url 'core:home' %}" class="text-white text-2xl font-bold rounded-lg px-3 py-1 hover:bg-indigo-600 transition-colors">LMS</a>
+            <div class="flex items-center space-x-4 relative"> {# Added relative for dropdown positioning #}
+                {% if user.is_authenticated %}
+                    <!-- Notification Bell Icon -->
+                    <div class="relative">
+                        <button id="notification-bell" class="text-white text-2xl p-2 rounded-full hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                            <i class="fas fa-bell"></i>
+                            {% if user.recent_notifications.unread_count > 0 %}
+                                <span class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">
+                                    {{ user.recent_notifications.unread_count }}
+                                </span>
+                            {% endif %}
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notification-dropdown" class="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-20">
+                            <div class="px-4 py-2 border-b border-gray-200 text-gray-800 font-semibold">Notifications</div>
+                            {% if user.recent_notifications.notifications %}
+                                {% for notification in user.recent_notifications.notifications %}
+                                    <a href="{{ notification.link|default:'#' }}"
+                                       class="block px-4 py-3 text-sm {% if not notification.is_read %}bg-blue-50{% endif %} text-gray-700 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
+                                       onclick="markNotificationAsRead('{{ notification.pk }}')">
+                                        <p class="font-medium">{{ notification.message }}</p>
+                                        <p class="text-xs text-gray-500">{{ notification.created_at|timesince }} ago</p>
+                                    </a>
+                                {% endfor %}
+                                <div class="px-4 py-2 text-center text-sm">
+                                    <a href="{% url 'core:all_notifications' %}" class="text-indigo-600 hover:underline">View All</a>
+                                </div>
+                            {% else %}
+                                <p class="px-4 py-3 text-sm text-gray-500 text-center">No new notifications.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <span class="text-white text-lg">Hello, <span class="font-semibold">{{ user.username }}</span>!</span>
+                    <a href="{% url 'core:dashboard_redirect' %}" class="bg-indigo-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-600 transition-colors hidden sm:inline-block">My Dashboard</a>
+                    <a href="{% url 'core:logout' %}" class="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition-colors">Logout</a>
+                {% else %}
+                    <a href="{% url 'core:login' %}" class="bg-white text-indigo-700 px-4 py-2 rounded-lg font-semibold hover:bg-indigo-100 transition-colors">Login</a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer (Optional) -->
+    <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+        <div class="container mx-auto">
+            &copy; 2025 Enhanced LMS. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notification-bell');
+            const dropdown = document.getElementById('notification-dropdown');
+
+            if (bell && dropdown) {
+                bell.addEventListener('click', function() {
+                    dropdown.classList.toggle('active');
+                });
+
+                // Close the dropdown if clicked outside
+                document.addEventListener('click', function(event) {
+                    if (!bell.contains(event.target) && !dropdown.contains(event.target)) {
+                        dropdown.classList.remove('active');
+                    }
+                });
+            }
+        });
+
+        // Function to mark notification as read via AJAX
+        function markNotificationAsRead(notificationId) {
+            fetch('/notifications/mark-read/' + notificationId + '/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Optionally update UI without full page reload
+                    console.log('Notification marked as read:', notificationId);
+                    const bellSpan = document.querySelector('#notification-bell span');
+                    if (bellSpan) {
+                        let currentCount = parseInt(bellSpan.textContent);
+                        if (currentCount > 0) {
+                            currentCount--;
+                            bellSpan.textContent = currentCount;
+                            if (currentCount === 0) {
+                                bellSpan.remove();
+                            }
+                        }
+                    }
+                    // Find the notification in the dropdown and change its background
+                    const notificationElement = document.querySelector(`[onclick*="markNotificationAsRead('${notificationId}')"]`);
+                    if (notificationElement) {
+                        notificationElement.classList.remove('bg-blue-50');
+                    }
+                }
+            })
+            .catch(error => console.error('Error marking notification as read:', error));
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.startsWith(name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>

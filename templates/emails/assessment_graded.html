@@ -1,0 +1,22 @@
+<!-- templates/emails/assessment_graded.html -->
+{% extends 'emails/email_base.html' %}
+
+{% block email_title %}Assessment Graded Notification{% endblock %}
+
+{% block email_content %}
+    <p>Dear {{ student_name }},</p>
+    <p>Your submission for the assignment "<strong>{{ assignment_title }}</strong>" in course "<strong>{{ course_title }}</strong>" has been graded.</p>
+    <p><strong>Your Score:</strong> {{ score|floatformat:0 }} / {{ max_score }}</p>
+    {% if feedback %}
+        <p><strong>Feedback:</strong></p>
+        <p style="white-space: pre-wrap; background-color: #f8f8f8; padding: 10px; border-left: 3px solid #4f46e5; margin-left: 20px;">{{ feedback }}</p>
+    {% endif %}
+
+    <div class="button-container">
+        <a href="{{ submission_link }}" class="button">View Your Submission</a>
+    </div>
+
+    <p>Congratulations on your hard work!</p>
+    <p>Best regards,</p>
+    <p>The Enhanced LMS Team</p>
+{% endblock %}

@@ -1,0 +1,40 @@
+<!-- core/templates/core/home.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Enhanced LMS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+            color: #333;
+        }
+        /* Custom styles can go here if needed */
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
+        <h1 class="text-4xl font-extrabold text-indigo-700 mb-6">Welcome to Enhanced LMS!</h1>
+        <p class="text-lg text-gray-700 mb-8">Your ultimate platform for learning and growth.</p>
+
+        <div class="space-y-4">
+            {% if user.is_authenticated %}
+                <p class="text-gray-600">Hello, <span class="font-semibold text-indigo-600">{{ user.username }}</span>!</p>
+                <a href="{% url 'admin:index' %}" class="block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">Go to Admin Panel</a>
+                <a href="{% url 'logout' %}" class="block bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">Logout</a>
+            {% else %}
+                <a href="{% url 'admin:login' %}" class="block bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">Login</a>
+                <p class="text-sm text-gray-500 mt-2">Use your admin credentials to explore the system.</p>
+            {% endif %}
+
+            <p class="text-sm text-gray-500 mt-4">
+                This is a placeholder home page. More features coming soon!
+            </p>
+        </div>
+    </div>
+</body>
+</html>

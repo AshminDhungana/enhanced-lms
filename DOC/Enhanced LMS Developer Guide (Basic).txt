@@ -1,0 +1,121 @@
+Enhanced Learning Management System (LMS) Developer Guide
+This guide provides basic information for developers looking to understand, modify, or extend the Enhanced LMS project.
+
+1. Project Structure
+The project is a standard Django application with a main project configuration (lms_project) and a core application (core).
+
+lms_project/:
+
+settings.py: Main Django settings, database configuration, installed apps, email settings, template paths, static files.
+
+urls.py: Main URL dispatcher, includes core app URLs and Django's built-in auth URLs.
+
+wsgi.py, asgi.py: WSGI/ASGI configuration for deployment.
+
+context_processors.py: Custom Django context processors (e.g., for global notifications).
+
+core/:
+
+models.py: Defines all database models for users, courses, enrollments, assessments, submissions, sponsorships, and notifications.
+
+views.py: Contains all view functions that handle HTTP requests, interact with models, and render templates. Includes dashboards, CRUD operations, and notification triggers.
+
+urls.py: Defines URL patterns specific to the core application.
+
+forms.py: Django forms for creating and updating models (e.g., CourseForm, AssessmentForm, SubmissionGradingForm). Utilizes django-crispy-forms for styling.
+
+admin.py: Registers models with the Django Admin interface for easy data management. Includes custom admin classes.
+
+utils.py: Contains utility functions, notably send_notification_email for sending emails and creating in-app notifications.
+
+templates/:
+
+core/: Application-specific HTML templates (dashboards, course lists, forms, etc.).
+
+registration/: Templates for Django's built-in authentication views (e.g., login.html).
+
+templates/ (root directory):
+
+base.html: The base HTML template extended by most other templates, providing consistent navigation, header, and footer. Includes notification bell logic.
+
+emails/: HTML templates for outgoing email notifications.
+
+db.sqlite3: The default SQLite database file (created after running migrate).
+
+manage.py: Django's command-line utility for managing the project.
+
+.gitignore: Specifies files/directories to ignore in Git.
+
+2. Setup and Running
+Clone Repository:
+
+git clone https://github.com/your-username/your-repo-name.git
+cd your-repo-name
+
+(Note: If you're in Codespaces, this step is handled when you create the Codespace from your repo.)
+
+Create Virtual Environment (Optional, but Recommended outside Codespaces):
+
+python -m venv venv
+source venv/bin/activate # On Windows: `venv\Scripts\activate`
+
+Install Dependencies:
+
+pip install django crispy-forms crispy-tailwind
+
+Run Migrations:
+
+python manage.py makemigrations
+python manage.py migrate
+
+Create Superuser:
+
+python manage.py createsuperuser
+
+Follow the prompts to create an admin user.
+
+Run Development Server:
+
+python manage.py runserver 0.0.0.0:8000
+
+Access the application in your browser at http://localhost:8000/ or the Codespaces forwarded URL.
+
+3. Key Concepts
+Django Models (ORM): Database schema defined in core/models.py.
+
+Django Forms: Used for data input and validation in core/forms.py. Integrated with crispy_forms for quick styling.
+
+Django Views: Python functions that handle web requests. Decorated for authentication (@login_required) and role-based access control (@user_passes_test).
+
+Django Templates: HTML files with Django's template language for dynamic content. Uses a base.html for consistency.
+
+Context Processors: (lms_project/context_processors.py) Provide global variables (like notification count) to all templates.
+
+Django Admin: Automatically generated administration interface for managing database records. Models are registered in core/admin.py.
+
+Notifications & Emailing: core/utils.py contains send_notification_email to send emails via settings.EMAIL_BACKEND (console in dev) and create Notification records.
+
+Role-Based Access Control: Implemented using Django Groups, UserProfile model, and @user_passes_test decorators.
+
+4. Customizing and Extending
+Styling: Uses Tailwind CSS via CDN for rapid prototyping. For a production setup, consider a full Tailwind CSS build process.
+
+New Features: To add a new feature, typically you'll:
+
+Define/update models in core/models.py.
+
+Create forms in core/forms.py.
+
+Implement views in core/views.py.
+
+Define URL patterns in core/urls.py.
+
+Create/update templates in core/templates/core/.
+
+(If applicable) Register new models in core/admin.py.
+
+Run makemigrations and migrate.
+
+Email Backend: For production, change EMAIL_BACKEND in settings.py to an SMTP backend and configure credentials.
+
+Asynchronous Tasks: For heavy background tasks (like sending many emails, complex analytics), consider integrating a task queue like Celery.

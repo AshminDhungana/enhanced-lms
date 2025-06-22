@@ -1,0 +1,69 @@
+<!-- core/templates/core/dashboard_student.html -->
+{% extends 'base.html' %}
+
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto p-8 mt-8 bg-white rounded-lg shadow-xl">
+    <h1 class="text-3xl font-bold text-indigo-700 mb-6">Student Dashboard</h1>
+    <p class="text-gray-700 mb-4">Welcome to your personalized learning space. Here you can track your courses, progress, and assignments.</p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- My Courses Card -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
+            <h2 class="text-xl font-semibold text-blue-800 mb-3">My Courses</h2>
+            {% if enrollments %}
+                <p class="text-gray-600">You are enrolled in <span class="font-bold">{{ enrollments.count }}</span> course{{ enrollments.count|pluralize }}.</p>
+                <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                    {% for enrollment in enrollments %}
+                        <li>
+                            <a href="{% url 'core:course_detail' pk=enrollment.course.pk %}" class="text-blue-700 hover:underline">
+                                {{ enrollment.course.title }}
+                            </a>
+                            ({{ enrollment.progress|floatformat:"0" }}% Complete)
+                        </li>
+                    {% endfor %}
+                </ul>
+                <a href="{% url 'core:course_list' %}" class="text-blue-600 hover:underline mt-4 block">View All Courses &rarr;</a>
+            {% else %}
+                <p class="text-gray-600">You are not currently enrolled in any courses.</p>
+                <a href="{% url 'core:course_list' %}" class="text-blue-600 hover:underline mt-4 block">Browse Available Courses &rarr;</a>
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Assignments Card -->
+        <div class="bg-green-50 p-6 rounded-lg shadow-md border border-green-200">
+            <h2 class="text-xl font-semibold text-green-800 mb-3">Upcoming Assignments</h2>
+            {% if upcoming_assignments %}
+                <p class="text-gray-600">You have <span class="font-bold">{{ upcoming_assignments.count }}</span> pending assignment{{ upcoming_assignments.count|pluralize }}.</p>
+                <ul class="list-disc list-inside text-gray-600 mt-2 space-y-1">
+                    {% for assignment in upcoming_assignments %}
+                        <li>
+                            {{ assignment.title }} (Course: {{ assignment.course.title }})
+                             <span class="text-sm text-gray-500">Due: {{ assignment.due_date|date:"M d, Y P" }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <a href="#" class="text-green-600 hover:underline mt-4 block">View All Assignments &rarr;</a>
+            {% else %}
+                <p class="text-gray-600">No upcoming assignments.</p>
+            {% endif %}
+        </div>
+
+        <!-- Notifications Card (Still placeholder for now, will integrate email/notifications later) -->
+        <div class="bg-yellow-50 p-6 rounded-lg shadow-md border border-yellow-200">
+            <h2 class="text-xl font-semibold text-yellow-800 mb-3">Notifications</h2>
+            <ul class="list-disc list-inside text-gray-600 mt-2">
+                <li>New lesson added to "Web Dev with Django"</li>
+                <li>Your "Python Basics" quiz was graded. Score: 85/100</li>
+                <li>Reminder: "Database Essentials" module 2 due soon.</li>
+            </ul>
+            <a href="#" class="text-yellow-600 hover:underline mt-4 block">View All Notifications &rarr;</a>
+        </div>
+    </div>
+
+    <p class="text-center text-gray-500 mt-10 text-sm">
+        Student dashboard with dynamic course and assignment data.
+    </p>
+</div>
+{% endblock %}

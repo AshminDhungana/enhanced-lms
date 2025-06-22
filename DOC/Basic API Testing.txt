@@ -1,0 +1,269 @@
+# core/tests.py
+
+from django.test import TestCase, Client
+from django.urls import reverse
+from django.contrib.auth.models import User, Group
+from django.utils import timezone
+from datetime import timedelta
+from .models import UserProfile, Course, Enrollment, Assessment, Submission, Notification
+
+class CoreViewsTest(TestCase):
+    """
+    Test suite for core application views, focusing on basic functionality
+    and role-based access.
+    """
+
+    def setUp(self):
+        """
+        Set up test data for all tests.
+        """
+        self.client = Client()
+
+        # Create user roles (groups)
+        self.student_group, _ = Group.objects.get_or_create(name='student')
+        self.instructor_group, _ = Group.objects.get_or_create(name='instructor')
+        self.sponsor_group, _ = Group.objects.get_or_create(name='sponsor')
+        self.admin_group, _ = Group.objects.get_or_create(name='admin')
+
+        # Create users with different roles
+        self.admin_user = User.objects.create_user(username='testadmin', email='admin@example.com', password='password123')
+        UserProfile.objects.create(user=self.admin_user, role='admin')
+
+        self.instructor_user = User.objects.create_user(username='testinstructor', email='instructor@example.com', password='password123')
+        UserProfile.objects.create(user=self.instructor_user, role='instructor')
+
+        self.student_user = User.objects.create_user(username='teststudent', email='student@example.com', password='password123')
+        UserProfile.objects.create(user=self.student_user, role='student')
+
+        self.sponsor_user = User.objects.create_user(username='testsponsor', email='sponsor@example.com', password='password123')
+        UserProfile.objects.create(user=self.sponsor_user, role='sponsor')
+
+        self.superuser = User.objects.create_superuser(username='superuser', email='superuser@example.com', password='password123')
+
+        # Create some courses
+        self.course1 = Course.objects.create(title='Django Basics', description='Intro to Django', difficulty='beginner', price=0.00, is_active=True)
+        self.course1.instructors.add(self.instructor_user)
+        self.course2 = Course.objects.create(title='Advanced Python', description='Deep dive into Python', difficulty='advanced', price=99.99, is_active=True)
+        self.course2.instructors.add(self.instructor_user)
+
+        # Create an enrollment
+        self.enrollment = Enrollment.objects.create(student=self.student_user, course=self.course1, progress=50.00)
+
+        # Create an assessment
+        self.assessment = Assessment.objects.create(
+            course=self.course1,
+            title='Django Quiz 1',
+            description='First quiz on Django basics.',
+            assessment_type='quiz',
+            due_date=timezone.now() + timedelta(days=7),
+            max_score=100
+        )
+
+        # Create a submission
+        self.submission = Submission.objects.create(
+            assessment=self.assessment,
+            student=self.student_user,
+            submission_content='My submission content here.'
+        )
+
+    def test_home_view(self):
+        """
+        Test the home page view.
+        """
+        response = self.client.get(reverse('core:home'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'core/home.html')
+        self.assertContains(response, "Welcome to Enhanced LMS!")
+
+    def test_login_view(self):
+        """
+        Test the custom login page.
+        """
+        response = self.client.get(reverse('core:login'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'registration/login.html')
+        self.assertContains(response, "Login to LMS")
+
+    def test_dashboard_redirect_admin(self):
+        """
+        Test if admin user is redirected to admin dashboard.
+        """
+        self.client.login(username='testadmin', password='password123')
+        response = self.client.get(reverse('core:dashboard_redirect'), follow=True)
+        self.assertRedirects(response, reverse('core:admin_dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard_admin.html')
+        self.assertContains(response, "Admin Dashboard - Platform Overview")
+
+    def test_dashboard_redirect_superuser(self):
+        """
+        Test if superuser is redirected to admin dashboard.
+        """
+        self.client.login(username='superuser', password='password123')
+        response = self.client.get(reverse('core:dashboard_redirect'), follow=True)
+        self.assertRedirects(response, reverse('core:admin_dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard_admin.html')
+        self.assertContains(response, "Admin Dashboard - Platform Overview")
+
+    def test_dashboard_redirect_student(self):
+        """
+        Test if student user is redirected to student dashboard.
+        """
+        self.client.login(username='teststudent', password='password123')
+        response = self.client.get(reverse('core:dashboard_redirect'), follow=True)
+        self.assertRedirects(response, reverse('core:student_dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard_student.html')
+        self.assertContains(response, "Student Dashboard")
+
+    def test_dashboard_redirect_instructor(self):
+        """
+        Test if instructor user is redirected to instructor dashboard.
+        """
+        self.client.login(username='testinstructor', password='password123')
+        response = self.client.get(reverse('core:dashboard_redirect'), follow=True)
+        self.assertRedirects(response, reverse('core:instructor_dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard_instructor.html')
+        self.assertContains(response, "Instructor Dashboard")
+
+    def test_dashboard_redirect_sponsor(self):
+        """
+        Test if sponsor user is redirected to sponsor dashboard.
+        """
+        self.client.login(username='testsponsor', password='password123')
+        response = self.client.get(reverse('core:dashboard_redirect'), follow=True)
+        self.assertRedirects(response, reverse('core:sponsor_dashboard'))
+        self.assertTemplateUsed(response, 'core/dashboard_sponsor.html')
+        self.assertContains(response, "Sponsor Dashboard")
+
+    def test_admin_dashboard_access_denied(self):
+        """
+        Test that non-admin users cannot access the admin dashboard.
+        """
+        self.client.login(username='teststudent', password='password123')
+        response = self.client.get(reverse('core:admin_dashboard'))
+        self.assertRedirects(response, reverse('core:login') + '?next=' + reverse('core:admin_dashboard'))
+
+    def test_course_list_view(self):
+        """
+        Test the course list view and basic content.
+        """
+        response = self.client.get(reverse('core:course_list'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'core/course_list.html')
+        self.assertContains(response, self.course1.title)
+        self.assertContains(response, self.course2.title)
+
+    def test_course_list_search(self):
+        """
+        Test course list search functionality.
+        """
+        response = self.client.get(reverse('core:course_list') + '?q=Django')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.course1.title)
+        self.assertNotContains(response, self.course2.title)
+
+    def test_course_list_filter_difficulty(self):
+        """
+        Test course list filter by difficulty.
+        """
+        response = self.client.get(reverse('core:course_list') + '?difficulty=advanced')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, self.course1.title)
+        self.assertContains(response, self.course2.title)
+
+    def test_course_detail_view(self):
+        """
+        Test course detail view.
+        """
+        response = self.client.get(reverse('core:course_detail', args=[self.course1.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'core/course_detail.html')
+        self.assertContains(response, self.course1.title)
+        self.assertContains(response, self.course1.description)
+
+    def test_assessment_create_view_triggers_notification(self):
+        """
+        Test that creating an assessment triggers a notification to enrolled students.
+        """
+        self.client.login(username='testinstructor', password='password123')
+        
+        # Check initial notification count for student
+        initial_notification_count = Notification.objects.filter(recipient=self.student_user).count()
+
+        new_assessment_data = {
+            'course': self.course1.pk,
+            'title': 'New Test Assignment',
+            'description': 'A test assignment.',
+            'assessment_type': 'assignment',
+            'due_date': (timezone.now() + timedelta(days=10)).strftime('%Y-%m-%dT%H:%M'),
+            'max_score': 50
+        }
+        
+        response = self.client.post(reverse('core:assessment_create', args=[self.course1.pk]), new_assessment_data, follow=True)
+        self.assertEqual(response.status_code, 200) # Should redirect to course detail
+        self.assertRedirects(response, reverse('core:course_detail', args=[self.course1.pk]))
+
+        # Verify a new notification was created for the student
+        self.assertEqual(Notification.objects.filter(recipient=self.student_user).count(), initial_notification_count + 1)
+        notification = Notification.objects.filter(recipient=self.student_user).order_by('-created_at').first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.notification_type, 'new_assignment')
+        self.assertIn('New Assignment: New Test Assignment', notification.message)
+        
+        # In a real test, you'd also capture and inspect the email sent to console.
+        # For this basic test, we verify the in-app notification.
+
+    def test_submission_grade_view_triggers_notification(self):
+        """
+        Test that grading a submission triggers a notification to the student.
+        """
+        self.client.login(username='testinstructor', password='password123')
+        
+        # Check initial notification count for student
+        initial_notification_count = Notification.objects.filter(recipient=self.student_user).count()
+
+        grade_data = {
+            'score': 85.00,
+            'feedback': 'Good work!',
+            'is_graded': True
+        }
+
+        response = self.client.post(reverse('core:submission_grade', args=[self.submission.pk]), grade_data, follow=True)
+        self.assertEqual(response.status_code, 200) # Should redirect to instructor dashboard
+        self.assertRedirects(response, reverse('core:instructor_dashboard'))
+
+        # Verify submission was updated
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.score, 85.00)
+        self.assertTrue(self.submission.is_graded)
+
+        # Verify a new notification was created for the student
+        self.assertEqual(Notification.objects.filter(recipient=self.student_user).count(), initial_notification_count + 1)
+        notification = Notification.objects.filter(recipient=self.student_user).order_by('-created_at').first()
+        self.assertIsNotNone(notification)
+        self.assertEqual(notification.notification_type, 'assessment_result')
+        self.assertIn(f'Assessment Graded: {self.assessment.title}', notification.message)
+
+    def test_mark_notification_as_read_api(self):
+        """
+        Test marking a notification as read via API.
+        """
+        self.client.login(username='teststudent', password='password123')
+        
+        # Create an unread notification for the student
+        notification = Notification.objects.create(
+            recipient=self.student_user,
+            message="Test unread notification",
+            notification_type="general",
+            is_read=False
+        )
+
+        response = self.client.post(reverse('core:mark_notification_as_read', args=[notification.pk]), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'success': True})
+
+        notification.refresh_from_db()
+        self.assertTrue(notification.is_read)
+
+        # Verify unread count decreases in context processor
+        response = self.client.get(reverse('core:student_dashboard')) # Any view that uses context processor
+        self.assertEqual(response.context['user']['recent_notifications']['unread_count'], 0) # Assuming this was the only unread one

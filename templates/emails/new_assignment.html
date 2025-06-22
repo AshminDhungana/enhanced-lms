@@ -1,0 +1,19 @@
+<!-- templates/emails/new_assignment.html -->
+{% extends 'emails/email_base.html' %}
+
+{% block email_title %}New Assignment Notification{% endblock %}
+
+{% block email_content %}
+    <p>Dear {{ student_name }},</p>
+    <p>A new assignment has been posted for your course: <strong>{{ course_title }}</strong>.</p>
+    <p><strong>Assignment:</strong> {{ assignment_title }}</p>
+    <p><strong>Due Date:</strong> {{ due_date|date:"F d, Y P" }}</p>
+
+    <div class="button-container">
+        <a href="{{ assignment_link }}" class="button">View Assignment</a>
+    </div>
+
+    <p>Please log in to the LMS to view the full details and submit your work.</p>
+    <p>Best regards,</p>
+    <p>The Enhanced LMS Team</p>
+{% endblock %}
