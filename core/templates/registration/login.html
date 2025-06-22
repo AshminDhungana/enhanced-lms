@@ -1,6 +1,6 @@
 <!-- core/templates/registration/login.html -->
 {% extends 'base.html' %}
-{% load crispy_forms_tags %} {# Load crispy_forms_tags instead of tailwind_filters #}
+{% load crispy_forms_tags %}
 
 {% block title %}Login{% endblock %}
 
@@ -18,7 +18,8 @@
             Don't have an account? Please contact an administrator.
         </p>
         <p class="text-center text-sm text-gray-600 mt-2">
-            <a href="{% url 'password_reset' %}" class="text-indigo-600 hover:underline">Forgot password?</a>
+            {# Changed 'password_reset' to 'accounts:password_reset' #}
+            <a href="{% url 'accounts:password_reset' %}" class="text-indigo-600 hover:underline">Forgot password?</a>
         </p>
     </div>
 </div>
